@@ -3,7 +3,7 @@ from fastmcp import Client
 from src.config.env import Env
 from src.config.mcp import Mcp
 
-def mcp_decorator(func):
+def mcp(func):
   async def wrapper(self, *args, **kwargs):
     config = Mcp.to_dict()
     for server_name in config["mcpServers"]:

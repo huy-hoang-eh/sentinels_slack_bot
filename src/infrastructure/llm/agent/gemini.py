@@ -1,7 +1,7 @@
 from google import genai
 from google.genai import types
 
-from src.infrastructure.mcp.decorator import mcp_decorator
+from src.infrastructure.mcp.decorator import mcp
 from src.config.env import Env
 from .base import Base
 
@@ -12,7 +12,7 @@ class Gemini(Base):
     self._model = model
     self._client = genai.Client(api_key=Env["GEMINI_API_TOKEN"])
   
-  @mcp_decorator
+  @mcp  
   async def prompt(self, session, prompt: str):
     chat = self._client.aio.chats.create(
       model=self._model,
