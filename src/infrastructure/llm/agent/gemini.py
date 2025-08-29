@@ -1,19 +1,34 @@
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
-class GeminiClient:
-  def __init__(self, api_key: str):
-    genai.configure(api_key=api_key)
-    self._model = genai.GenerativeModel("gemini-2.5-flash")
+from src.infrastructure.mcp.decorator import mcp_decorator
+from src.config.env import Env
+from .base import Base
 
-  def generate_text(self, prompt: str) -> str:
-    try:
-      response = self._model.generate_content(prompt)
-      return response.text
-    except Exception as e:
-      print(f"Error generating text: {e}")
-      return "I'm sorry, I'm having trouble generating text. Please try again later."
+
+class Gemini(Base):
+  def __init__(self, model: str = "gemini-2.5-flash"):
+    super().__init__()
+    self._model = model
+    self._client = genai.Client(api_key=Env["GEMINI_API_TOKEN"])
   
-  def generate_sprint_summary(self, sprint_name: str, issues: list[dict]) -> str:
+  @mcp_decorator
+  async def prompt(self, session, prompt: str):
+    chat = self._client.aio.chats.create(
+      model=self._model,
+      config=types.GenerateContentConfig(
+        temperature=0,
+        tools=[session],
+      )
+    )
+
+    response = await chat.send_message(
+      message=prompt
+    )
+
+    return response
+  
+  # def generate_sprint_summary(self, sprint_name: str, issues: list[dict]) -> str:
     issues_str = f"# Sprint Name: {sprint_name}"
 
     for issue in issues:
@@ -165,3 +180,5 @@ class GeminiClient:
     **### End of JIRA DATA FOR CURRENT REPORT**
     """
     return self.generate_text(prompt)
+
+
