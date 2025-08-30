@@ -1,5 +1,8 @@
+from src.config.agent import Agent
 from src.infrastructure.llm.agent.base import Base
 from src.infrastructure.llm.agent.gemini import Gemini
+from src.infrastructure.llm.agent.claude import Claude
+from google.genai import types
 
 class Adapter:
   _agent: Base | None = None
@@ -11,8 +14,10 @@ class Adapter:
     if self._agent is not None:
       return self._agent
     
-    if agent == "gemini":
+    if agent == Agent.GEMINI:
       return Gemini() 
+    elif agent == Agent.CLAUDE:
+      return Claude()
     else:
       raise ValueError(f"Agent {agent} not supported")
 
@@ -22,5 +27,5 @@ class Adapter:
   async def close_session(self):
     return await self._agent.close_session()
 
-  async def send_message(self, message: str, config: dict | None = None):
+  async def send_message(self, message: str, config: dict | None = None) -> types.GenerateContentResponse:
     return await self._agent.send_message(message, config)

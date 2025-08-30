@@ -2,13 +2,13 @@ from typing import Optional
 from google import genai
 from google.genai import types
 
-from src.infrastructure.mcp.decorator import open_session, close_session
+from src.infrastructure.mcp.adapter import open_session, close_session
 from src.config.env import Env
 from .base import Base
 
 
 class Gemini(Base):
-  def __init__(self, model: str = "gemini-2.5-flash"):
+  def __init__(self, model: str = "gemini-2.5-flash-lite"):
     super().__init__()
     self._model = model
     self._client = genai.Client(api_key=Env["GEMINI_API_TOKEN"])
@@ -30,16 +30,23 @@ class Gemini(Base):
 
     return self._mcp_client.session
   
-  async def send_message(self, message: str, config: dict | None = None):
+  async def send_message(self, prompt: str, config: dict | None = None) -> types.GenerateContentResponse:
     if not self.is_session_opened():
       raise Exception("Conversation not opened")
-    
+      
     if config is not None:
-      config = types.GenerateContentConfig(**config)
+      if "session" in config:
+        config["tools"] = [config["session"]]
+        del config["session"]
+      config = types.GenerateContentConfig(
+        max_output_tokens=1000,
+        **config
+        )
     else:
       config = None
 
-    return await self._conversation.send_message(message, config)
+    response = await self._conversation.send_message(prompt, config)
+    return response.text
 
   async def close_session(self):
     if self.is_session_opened():

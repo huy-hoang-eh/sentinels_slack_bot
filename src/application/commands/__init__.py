@@ -7,7 +7,6 @@ from src.infrastructure.messaging.slack.notifier import post_message
 def _decorate_handler(handler_fn):
   def wrapper(ack, respond, command):
     ack()
-    handler_fn(ack, respond, command)
     try:
       handler_fn(ack, respond, command)
     except Exception as e:

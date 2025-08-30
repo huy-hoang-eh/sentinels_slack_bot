@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 
+from google.genai import types
+
 
 class Base(ABC):
 
@@ -8,7 +10,7 @@ class Base(ABC):
     pass
 
   @abstractmethod
-  async def send_message(self, message: str, config: dict | None = None):
+  async def send_message(self, prompt: str, config: dict | None = None):
     pass
 
   @abstractmethod
