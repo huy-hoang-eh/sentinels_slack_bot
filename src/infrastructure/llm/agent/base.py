@@ -10,7 +10,7 @@ class Base(ABC):
     pass
 
   @abstractmethod
-  async def send_message(self, prompt: str, config: dict | None = None):
+  async def send_message(self, prompt: str, config: dict | None = None) -> str:
     pass
 
   @abstractmethod

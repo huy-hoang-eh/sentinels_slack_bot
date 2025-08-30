@@ -17,7 +17,7 @@ def get_jira_summary(channel_id: str | None, prompt: str | None = None) -> str:
   
   return asyncio.run(
     _ask_agent(
-      Agent.GEMINI, 
+      Agent.CLAUDE, 
       prompt.strip(),
     )
   )
@@ -25,20 +25,69 @@ def get_jira_summary(channel_id: str | None, prompt: str | None = None) -> str:
 
 async def _ask_agent(agent: str, prompt: str):
   adapter = Adapter(agent)
-  session =await adapter.open_session()
+  session = await adapter.open_session()
   response = await adapter.send_message(
-    _make_jira_info_prompt(prompt),
+    prompt,
     {
       "temperature": 0,
+      "system_instruction": _make_system_instruction(),
       "session": session,
     }
   )
 
   await adapter.close_session()
 
-  
 
   return response
+
+def _make_system_instruction() -> str:
+  return f"""
+You are an automated JIRA reporting agent.
+You receive user's prompt and you need to provide a well-formatted summary.
+Jira base URL: {Env["JIRA_URL"]}
+
+## MCP TOOL FIELD SELECTION GUIDELINES
+When using MCP tools with input_schema fields, apply these optimization strategies:
+
+### REQUIRED FIELD SELECTION PRINCIPLES:
+1. **Response-Driven Selection**: Only request fields that directly contribute to the final response format, avoiding use of `*all` or `*`
+2. **Use JQL to search fields**: When searching fields, use JQL to search fields
+3. **Minimal Data Fetching**: Choose the smallest set of fields that satisfy the output requirements
+4. **Performance Optimization**: Avoid fetching large text fields (descriptions, comments) unless specifically needed
+5. **Exclude Unused Fields**: Never include metadata fields, url fields, internal IDs, or metadata that doesn't contribute to the summary
+
+### FIELDS TO ALWAYS EXCLUDE:
+- **URL Fields**: `*_url`, `icon_url`, `avatar_url`, `self`, `url` (these are for UI rendering, not reporting), `html`
+- **Internal Metadata**: `id`, `expand`, `requested_fields`, `custom_fields` (unless specifically analyzing custom fields)
+- **Large Text Fields**: `description`, `comments`, `attachments`, `changelogs` (unless content analysis is required)
+- **Nested Objects**: Avoid deep object expansion unless the specific nested data is needed
+
+### FIELD SELECTION BY USE CASE:
+- **For Epic Summaries**: Use fields: `summary,status,assignee,priority,issuetype,updated,labels,parent`
+- **For Status Counts**: Use fields: `status,issuetype,parent` (minimal set for grouping and counting)
+- **For Issue Lists**: Use fields: `summary,status,assignee,priority,issuetype,created,updated`
+- **For Detailed Analysis**: Add fields: `description,labels,fixVersions,components` only when needed
+- **For Sprint Reports**: Use fields: `summary,status,assignee,issuetype,parent,updated,priority`
+
+Your response must be a list of json objects with the following format:
+- epic: The name of epic
+- overall_status: The overall status of the epic (must be the number of issues in each status)
+"""
+
+def _make_test_jira_info_prompt(prompt: str) -> str:
+  jira_base = (Env["JIRA_URL"] or "").strip()
+  return f"""
+You are a Jira assistant with MCP tools access. 
+Interpret the user's prompt and provide a well-formatted summary.
+## CONTEXT
+- Jira base URL: {jira_base}
+
+## USER'S PROMPT
+{prompt}
+
+## OUTPUT FORMAT
+- Just return the summary
+"""
 
 def _make_jira_info_prompt(prompt: str) -> str:
   jira_base = (Env["JIRA_URL"] or "").strip()

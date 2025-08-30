@@ -27,5 +27,5 @@ class Adapter:
   async def close_session(self):
     return await self._agent.close_session()
 
-  async def send_message(self, message: str, config: dict | None = None) -> types.GenerateContentResponse:
+  async def send_message(self, message: str, config: dict | None = None) -> str:
     return await self._agent.send_message(message, config)

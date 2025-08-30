@@ -30,7 +30,7 @@ class Gemini(Base):
 
     return self._mcp_client.session
   
-  async def send_message(self, prompt: str, config: dict | None = None) -> types.GenerateContentResponse:
+  async def send_message(self, prompt: str, config: dict | None = None) -> str:
     if not self.is_session_opened():
       raise Exception("Conversation not opened")
       
