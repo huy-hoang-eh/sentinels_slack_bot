@@ -1,12 +1,20 @@
 from abc import ABC, abstractmethod
-from fastmcp import Client
 
-from src.config.env import Env
-from src.config.mcp import Mcp
-from src.infrastructure.mcp.decorator import mcp
 
 class Base(ABC):
-  @mcp
+
   @abstractmethod
-  async def prompt(self, session, prompt: str):
-    pass  
+  async def open_session(self, config: dict):
+    pass
+
+  @abstractmethod
+  async def send_message(self, message: str, config: dict | None = None):
+    pass
+
+  @abstractmethod
+  async def close_session(self):
+    pass
+
+  @abstractmethod
+  def is_session_opened(self):
+    pass

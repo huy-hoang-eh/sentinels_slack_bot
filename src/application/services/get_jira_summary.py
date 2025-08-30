@@ -3,7 +3,7 @@ import asyncio
 from src.config.agent import Agent
 from src.config.env import Env
 
-from src.infrastructure.llm.adapter import prompt
+from src.infrastructure.llm.adapter import Adapter
 
 
 DEFAULT_BOARD_INFO = "board sentinels"
@@ -15,8 +15,26 @@ def get_jira_summary(channel_id: str | None, board_info: str = DEFAULT_BOARD_INF
   if not board_info:
     board_info = DEFAULT_BOARD_INFO
   
-  return asyncio.run(prompt(Agent.GEMINI, _make_board_info_prompt(board_info)))
+  return asyncio.run(
+    _ask_agent(
+      Agent.GEMINI, 
+      _make_board_info_prompt(board_info)
+    )
+  )
 
+
+async def _ask_agent(agent: str, prompt: str):
+  adapter = Adapter(agent)
+  session =await adapter.open_conversation()
+  response = await adapter.send_message(
+    prompt,
+    {
+      "temperature": 0,
+      "tools": [session]
+    }
+  )
+  await adapter.close_conversation()
+  return response
 # def _make_board_info_prompt(board_input: str) -> str:
 #   jira_base = (Env["JIRA_URL"] or "").strip()
 #   return f"""
