@@ -1,59 +1,186 @@
+import json
 from typing import Optional
 from google import genai
 from google.genai import types
 
-from src.infrastructure.mcp.adapter import open_session, close_session
 from src.config.env import Env
 from .base import Base
 
 
 class Gemini(Base):
-  def __init__(self, model: str = "gemini-2.5-flash-lite"):
+  def __init__(self, model: str = "gemini-2.5-flash"):
     super().__init__()
     self._model = model
     self._client = genai.Client(api_key=Env["GEMINI_API_TOKEN"])
     self._conversation: Optional[types.ChatMessage] = None
-    self._mcp_client = None
-
-  def is_session_opened(self):
-    return self._conversation is not None and self._mcp_client is not None and self._mcp_client.is_connected()
   
-  async def open_session(self, config: dict):
-    if self.is_session_opened():
-      return self._mcp_client.session
+  def _clean_schema(self, schema: dict) -> dict:
+    """Clean MCP tool schema to be compatible with Gemini API"""
+    if not isinstance(schema, dict):
+      return schema
     
-    self._mcp_client = await open_session()
-    self._conversation = self._client.aio.chats.create(
-      model=self._model,
-      config=types.GenerateContentConfig(**config)
-    )
+    # Fields to exclude from Gemini tool schemas
+    excluded_fields = {
+      "additionalProperties", 
+      "$schema", 
+      "additional_properties"
+    }
+    
+    cleaned = {}
+    for key, value in schema.items():
+      if key in excluded_fields:
+        continue
+        
+      if isinstance(value, dict):
+        cleaned[key] = self._clean_schema(value)
+      elif isinstance(value, list):
+        cleaned[key] = [self._clean_schema(item) if isinstance(item, dict) else item for item in value]
+      else:
+        cleaned[key] = value
+    
+    return cleaned
 
-    return self._mcp_client.session
+  async def _parse_config(self, config: dict | None) -> dict | None:
+    if config is None:
+      return None
+
+    # Create a copy to avoid modifying the original
+    gemini_config = config.copy()
+
+    tools = await self.available_tools()
+    if tools:
+      gemini_config["tools"] = [
+        types.Tool(
+          function_declarations=[
+            {
+              "name": tool.name,
+              "description": tool.description,
+              "parameters": self._clean_schema(tool.inputSchema)
+            } for tool in tools
+          ]
+        )
+      ]
+    
+    # gemini_config["automatic_function_calling"] = types.AutomaticFunctionCallingConfig(
+    #   disable=True
+    # )
+    
+    return types.GenerateContentConfig(**gemini_config)
   
   async def send_message(self, prompt: str, config: dict | None = None) -> str:
     if not self.is_session_opened():
       raise Exception("Conversation not opened")
+
+    config = await self._parse_config(config)
+
+    messages = [
+      types.Content(
+        role="user",
+        parts=[types.Part(text=prompt)]
+      )
+    ]
+
+    final_response = []
+    response = None
+    stop_reason = None
+    has_function_calls = False
+
+    while True:
+      if stop_reason is not None and not has_function_calls:
+        break
+
+      response = self._client.models.generate_content(
+        model=self._model,
+        contents=messages,
+        config=config
+      )
+
+      candidate = response.candidates[0]
       
-    if config is not None:
-      if "session" in config:
-        config["tools"] = [config["session"]]
-        del config["session"]
-      config = types.GenerateContentConfig(
-        max_output_tokens=1000,
-        **config
+      stop_reason = candidate.finish_reason
+
+      result, has_function_calls = await self._handle_response(candidate)
+
+      t_messages = []
+      for item in result:
+        t_messages.extend(item["messages"])
+        final_response.extend(item["responses"])
+
+      messages.extend(
+        self._make_messages(
+          self._merge_messages(t_messages)
         )
-    else:
-      config = None
-
-    response = await self._conversation.send_message(prompt, config)
-    return response.text
-
-  async def close_session(self):
-    if self.is_session_opened():
-      await close_session(self._mcp_client)
-      self._mcp_client = None
-      self._conversation = None
+      )
+    
+    return "\n".join(final_response)
   
+  async def _handle_response(self, candidate: types.Candidate) -> list[dict]:
+    if candidate.content is None:
+      return []
+    
+    result = []
+    has_function_calls = False
+    
+    for part in candidate.content.parts:
+      if part.function_call is not None:
+        has_function_calls = True
+        result.append(await self._handle_tool_use(part))
+      elif part.text is not None:
+        result.append(self._handle_text(part))
+
+    return result, has_function_calls
+
+  async def _handle_tool_use(self, part: types.Part):
+    tool_result = await self._mcp_client.call_tool(name=part.function_call.name, arguments=part.function_call.args)
+
+    content = json.loads(tool_result.content[0].text)
+  
+    if type(content) == list:
+      response = content[0]
+    else:
+      response = content
+
+    return {
+      "messages": [
+        {
+          "role": "model",
+          "content": [part]
+        },
+        {
+          "role": "user",
+          "content": [
+            types.Part(
+              function_response=types.FunctionResponse(
+                id=part.function_call.id,
+                name=part.function_call.name,
+                response=response
+              )
+            )
+          ]
+        }
+      ],
+      "responses": [f"Call {part.function_call.name} with args {part.function_call.args}: {response}"]
+    }
+
+  def _handle_text(self, part: types.Part):
+    return {
+      "messages": [
+        {
+          "role": "model",
+          "content": [part]
+        }
+      ],
+      "responses": [part.text]
+    }
+  
+  def _make_messages(self, messages: list[dict]):
+    return [
+      types.Content(
+        role=message["role"],
+        parts=message["content"]
+      ) for message in messages
+    ]
+
   # def generate_sprint_summary(self, sprint_name: str, issues: list[dict]) -> str:
   #   issues_str = f"# Sprint Name: {sprint_name}"
 

@@ -21,8 +21,8 @@ class Adapter:
     else:
       raise ValueError(f"Agent {agent} not supported")
 
-  async def open_session(self, config: dict = {}):
-    return await self._agent.open_session(config)
+  async def open_session(self):
+    return await self._agent.open_session()
 
   async def close_session(self):
     return await self._agent.close_session()

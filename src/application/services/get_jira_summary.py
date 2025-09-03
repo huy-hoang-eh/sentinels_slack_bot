@@ -6,7 +6,7 @@ from src.config.env import Env
 from src.infrastructure.llm.adapter import Adapter
 
 
-DEFAULT_PROMPT = "Summary current sprint of board name: sentinels boards"
+DEFAULT_PROMPT = "Summary current sprint of board name: sentinels board"
 
 def get_jira_summary(channel_id: str | None, prompt: str | None = None) -> str:
   if channel_id is None:
@@ -17,7 +17,7 @@ def get_jira_summary(channel_id: str | None, prompt: str | None = None) -> str:
   
   return asyncio.run(
     _ask_agent(
-      Agent.CLAUDE, 
+      Agent.GEMINI, 
       prompt.strip(),
     )
   )
@@ -25,13 +25,12 @@ def get_jira_summary(channel_id: str | None, prompt: str | None = None) -> str:
 
 async def _ask_agent(agent: str, prompt: str):
   adapter = Adapter(agent)
-  session = await adapter.open_session()
+  await adapter.open_session()
   response = await adapter.send_message(
     prompt,
     {
       "temperature": 0,
       "system_instruction": _make_system_instruction(),
-      "session": session,
     }
   )
 

@@ -1,7 +1,6 @@
 import asyncio
 from anthropic import Anthropic
 from anthropic.types import ToolResultBlockParam, ToolUseBlock, TextBlock, Message
-from src.infrastructure.mcp.adapter import open_session, close_session
 from src.config.env import Env
 from .base import Base
 
@@ -11,40 +10,12 @@ class Claude(Base):
     super().__init__()
     self._model = model
     self._client = Anthropic(api_key=Env["ANTHROPIC_API_KEY"])
-    self._mcp_client = None
 
-  async def _build_available_tools(self, session):
-    tools = await session.list_tools()
-    available_tools = [{
-      "name": tool.name,
-      "description": tool.description,
-      "input_schema": tool.inputSchema,
-    } for tool in tools]
-
-    return available_tools
-
-  def is_session_opened(self):
-    return self._mcp_client is not None and self._mcp_client.is_connected()
-
-  async def open_session(self, config: dict):
-    if self.is_session_opened():
-      return self._mcp_client
+  async def _parse_config(self, config: dict | None) -> dict | None:
+    if config is None:
+      return None
     
-    self._mcp_client = await open_session()
-
-    return self._mcp_client
-
-  async def send_message(self, prompt: str, config: dict | None = None) -> str:
-    if not self.is_session_opened():
-      raise Exception("Conversation not opened")
-
-    if config is not None and "session" in config:
-      session = config["session"]
-      del config["session"]
-    
-      config["tools"] = await self._build_available_tools(session)
-    
-    if config is not None and "system_instruction" in config:
+    if "system_instruction" in config:
       config["system"] = [
         {
           "type": "text",
@@ -52,6 +23,20 @@ class Claude(Base):
         }
       ]
       del config["system_instruction"]
+    
+    config["tools"] = [{
+      "name": tool.name,
+      "description": tool.description,
+      "input_schema": tool.inputSchema,
+    } for tool in await self.available_tools()]
+
+    return config
+
+  async def send_message(self, prompt: str, config: dict | None = None) -> str:
+    if not self.is_session_opened():
+      raise Exception("Conversation not opened")
+
+    config = await self._parse_config(config)
     
     messages = [
       {
@@ -87,11 +72,6 @@ class Claude(Base):
       messages.extend(self._merge_messages(t_messages))
 
     return "\n".join(final_responses)    
-  
-  async def close_session(self):
-    if self.is_session_opened():
-      await close_session(self._mcp_client)
-      self._mcp_client = None
 
   async def _handle_response(self, response: Message | None):
     if response is None or response.content is None:
@@ -142,20 +122,3 @@ class Claude(Base):
         ],
         "responses": [content.text]
       }
-  
-  def _merge_messages(self, messages: list[dict]):
-    merged_messages = {}
-    for message in messages:
-      key = message["role"]
-      if key not in merged_messages:
-        merged_messages[key] = []
-      merged_messages[key].extend(message["content"])
-
-    converted_messages = []
-    for key in merged_messages:
-      converted_messages.append({
-        "role": key,
-        "content": merged_messages[key]
-      })
-
-    return converted_messages  
