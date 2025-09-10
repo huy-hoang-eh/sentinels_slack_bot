@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from .task import Task
+from src.domain.entity.agent.common.task import Task
 
 class Plan(BaseModel):
   goal: str

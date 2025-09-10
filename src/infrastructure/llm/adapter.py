@@ -1,7 +1,7 @@
 from src.config.agent import Agent
-from src.infrastructure.llm.agent.base import Base
-from src.infrastructure.llm.agent.gemini import Gemini
-from src.infrastructure.llm.agent.claude import Claude
+from src.infrastructure.llm.model.base import Base
+from src.infrastructure.llm.model.gemini import Gemini
+from src.infrastructure.llm.model.claude import Claude
 from google.genai import types
 
 class Adapter:

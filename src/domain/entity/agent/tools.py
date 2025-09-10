@@ -1,5 +1,4 @@
 import json
-from google.genai import types
 from src.config.agent import Agent
 from src.infrastructure.llm.adapter import Adapter
 from typing import List, Dict
