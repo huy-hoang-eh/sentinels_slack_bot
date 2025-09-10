@@ -73,12 +73,12 @@ class Gemini(Base):
 
     config = await self._parse_config(config)
 
-    messages = [
+    self._history.append(
       types.Content(
         role="user",
         parts=[types.Part(text=prompt)]
       )
-    ]
+    )
 
     final_response = []
     response = None
@@ -91,7 +91,7 @@ class Gemini(Base):
 
       response = self._client.models.generate_content(
         model=self._model,
-        contents=messages,
+        contents=self._history,
         config=config
       )
 
@@ -106,13 +106,13 @@ class Gemini(Base):
         t_messages.extend(item["messages"])
         final_response.extend(item["responses"])
 
-      messages.extend(
+      self._history.extend(
         self._make_messages(
           self._merge_messages(t_messages)
         )
       )
     
-    return "\n".join(final_response)
+    return "test"
   
   async def _handle_response(self, candidate: types.Candidate) -> list[dict]:
     if candidate.content is None:

@@ -4,15 +4,16 @@
       "transport": "stdio",
       "command": "docker",
       "args": [
-        "run",
-        "-i",
-        "--rm",
         "-e", "CONFLUENCE_URL",
         "-e", "CONFLUENCE_USERNAME",
         "-e", "CONFLUENCE_API_TOKEN",
         "-e", "JIRA_URL",
         "-e", "JIRA_USERNAME",
         "-e", "JIRA_API_TOKEN",
+        "-e", "REQUESTS_CA_BUNDLE",
+        "-e", "NODE_EXTRA_CA_CERTS",
+        "-e", "CURL_CA_BUNDLE",
+        "-e", "IMAGE_CERTIFICATE_PATH",
         "ghcr.io/sooperset/mcp-atlassian:latest"
       ]
     }

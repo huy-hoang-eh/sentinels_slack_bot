@@ -2,12 +2,13 @@ import os
 import sys
 import json
 from pathlib import Path
+from src.config.env import Env
 from typing import Any, Dict
 
 
 _CONFIG: Dict[str, Any] = {}
 _LOADED: bool = False
-ROOT_DIR: str = os.path.dirname(sys.modules['__main__'].__file__)
+ROOT_DIR: str = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 CONFIG_PATH: str = os.path.join(ROOT_DIR, "config", "mcp.json")
 
 
@@ -20,6 +21,19 @@ def initialize() -> None:
       data = json.load(f)
     if not isinstance(data.get("mcpServers"), dict):
       raise ValueError("missing 'mcpServers' object")
+    
+    for server_name in data["mcpServers"]:
+      data["mcpServers"][server_name]["env"] = Env.to_dict()
+
+      if data["mcpServers"][server_name]["command"] == "docker":
+        volume_mount = f"{Env['LOCAL_CERTIFICATE_PATH']}:{Env['IMAGE_CERTIFICATE_PATH']}:ro"
+        
+        data["mcpServers"][server_name]["args"].insert(0, volume_mount)
+        data["mcpServers"][server_name]["args"].insert(0, "-v")
+        data["mcpServers"][server_name]["args"].insert(0, "--rm")
+        data["mcpServers"][server_name]["args"].insert(0, "-i")
+        data["mcpServers"][server_name]["args"].insert(0, "run")
+
     _CONFIG = data
     _LOADED = True
   except Exception as e:
