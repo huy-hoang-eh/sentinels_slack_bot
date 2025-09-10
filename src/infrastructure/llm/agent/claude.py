@@ -15,28 +15,29 @@ class Claude(Base):
     if config is None:
       return None
     
-    if "system_instruction" in config:
-      config["system"] = [
+    claude_config = config.copy()
+
+    if "system_instruction" in claude_config:
+      claude_config["system"] = [
         {
           "type": "text",
           "text": config["system_instruction"],
         }
       ]
-      del config["system_instruction"]
+      del claude_config["system_instruction"]
     
-    config["tools"] = [{
-      "name": tool.name,
-      "description": tool.description,
-      "input_schema": tool.inputSchema,
-    } for tool in await self.available_tools()]
+    if "use_tools" in claude_config:
+      if claude_config["use_tools"] == True:
+        claude_config["tools"] = await self._get_converted_mcp_tools(config) + await self._get_converted_custom_tools(config)
+        del claude_config["use_tools"]
 
-    return config
+    return claude_config
 
   async def send_message(self, prompt: str, config: dict | None = None) -> str:
     if not self.is_session_opened():
       raise Exception("Conversation not opened")
 
-    config = await self._parse_config(config)
+    claude_config = await self._parse_config(config)
     
     messages = [
       {
@@ -57,7 +58,7 @@ class Claude(Base):
         model=self._model,
         messages=messages,
         max_tokens=1000,
-        **config
+        **claude_config
       )
 
       stop_reason = response.stop_reason
@@ -89,7 +90,7 @@ class Claude(Base):
     return result
 
   async def _handle_tool_use(self, content: ToolUseBlock):
-    tool_result = await self._mcp_client.call_tool(name=content.name, arguments=content.input)
+    tool_result = await self.call_tool(name=content.name, arguments=content.input)
   
     return {
         "messages": [

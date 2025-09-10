@@ -10,8 +10,29 @@ class Base(McpMixin):
     super().__init__()
     self._mcp_client = None
 
+  async def _get_converted_mcp_tools(self, config: dict | None = None) -> list[dict]:
+    return [{
+      "name": tool.name,
+      "description": tool.description,
+      "input_schema": tool.inputSchema,
+    } for tool in await self.available_tools()]
+
+  async def _get_converted_custom_tools(self, config: dict | None = None) -> list[dict]:
+    if "custom_tools" not in config:
+      return []
+      
+    tools = config["custom_tools"]
+
+    return [
+      {
+        "name": tool.name(),
+        "description": tool.description(),
+        "parameters": tool.inputSchema()
+      } for tool in tools
+    ]
+  
   @abstractmethod
-  async def send_message(self, prompt: str, config: dict | None = None) -> str:
+  async def send_message(self, prompt: str, config: dict | None = None):
     pass
 
   async def available_tools(self) -> list[dict]:
