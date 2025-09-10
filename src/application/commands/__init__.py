@@ -1,3 +1,4 @@
+import os
 from slack_bolt import App
 import importlib
 import pkgutil
@@ -14,7 +15,7 @@ def _decorate_handler(handler_fn):
       post_message(command.get("channel_id"), f"Error handling command: {e}")  
   return wrapper
 
-def _register_commands_recursive(app: App, package_name: str, package_path: list, prefix: str = ""):
+def _register_commands_recursive(app: App, package_name: str, package_path: str, prefix: str = ""):
   """Recursively register commands from packages and subpackages."""
   for _, name, ispkg in pkgutil.iter_modules(package_path):
     if name.startswith("_"):
@@ -24,9 +25,9 @@ def _register_commands_recursive(app: App, package_name: str, package_path: list
     
     if ispkg:
       # Handle subpackage - recursively register commands with folder prefix
-      subpackage = importlib.import_module(full_module_name)
+      subpackage = [os.path.join(package_path[0], name)]
       folder_prefix = f"{prefix}{name}-" if prefix else f"{name}-"
-      _register_commands_recursive(app, full_module_name, subpackage.__path__, folder_prefix)
+      _register_commands_recursive(app, full_module_name, subpackage, folder_prefix)
     else:
       # Handle module - try to register command
       try:
@@ -36,7 +37,7 @@ def _register_commands_recursive(app: App, package_name: str, package_path: list
         
         if callable(handler_fn):
           # Create command name with folder prefix
-          command_name = f"{prefix}{name}".replace('_', '-')
+          command_name = f"{prefix}{name}"
           slash_command = f"/{command_name}"
           app.command(slash_command)(_decorate_handler(handler_fn))
           print(f"Registered command: {slash_command}")
