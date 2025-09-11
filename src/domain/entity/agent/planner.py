@@ -1,8 +1,6 @@
-import json
 from src.config.agent import Agent
 from src.infrastructure.llm.adapter import Adapter
 from src.domain.entity.agent.common.plan import Plan
-from src.domain.entity.agent.tools import Tools
 
 class Planner:
   def __init__(self, template_path: str):
@@ -24,14 +22,12 @@ class Planner:
       """
 
   async def call(self, prompt: str) -> Plan:
-    tools = await Tools().call()
-
     await self._agent.open_session()
 
     template = self._load_template()
 
     response = await self._agent.send_message(
-      template.replace("*user_goal*", prompt).replace("*available_tools*", json.dumps(tools)),
+      template.replace("*user_goal*", prompt),
       {
         'temperature': 0,
         'response_mime_type': 'application/json',
