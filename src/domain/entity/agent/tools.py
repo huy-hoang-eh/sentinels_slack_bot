@@ -3,6 +3,7 @@ from src.config.agent import Agent
 from src.infrastructure.llm.adapter import Adapter
 from typing import List, Dict
 from src.config.template import Template
+from src.domain.entity.custom_tool.jira.omit_issue_data_for_summary import OmitIssueDataForSummary
 
 class Tools:
   def __init__(self):
@@ -37,7 +38,10 @@ class Tools:
       template,
       {
         'temperature': 0,
-        'use_tools': True
+        'use_tools': True,
+        'custom_tools': [
+          OmitIssueDataForSummary
+        ]
       }
     )
 

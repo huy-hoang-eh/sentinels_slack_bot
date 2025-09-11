@@ -27,7 +27,7 @@ class McpMixin:
       self._history = []
 
   def _is_custom_tool(self, tool_name: str) -> bool:
-    return tool_name.startswith("src.domain.entity.custom_tool.")
+    return tool_name.startswith("custom_tool.")
 
   async def call_tool(self, name: str, arguments: dict[str, Any] | None = None) -> types.CallToolResult:
     if self._is_custom_tool(name):

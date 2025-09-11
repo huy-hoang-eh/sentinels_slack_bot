@@ -31,6 +31,9 @@ class Claude(Base):
         claude_config["tools"] = await self._get_converted_mcp_tools(config) + await self._get_converted_custom_tools(config)
         del claude_config["use_tools"]
 
+    if "custom_tools" in claude_config:
+      del claude_config["custom_tools"]
+
     return claude_config
 
   async def send_message(self, prompt: str, config: dict | None = None) -> str:

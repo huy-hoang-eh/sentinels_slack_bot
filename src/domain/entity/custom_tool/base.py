@@ -17,8 +17,8 @@ class Base:
     This allows for dynamic importing and unique identification of custom tools.
     """
     module_path = cls.__module__
-    class_name = cls.__name__
-    return f"{module_path}-{class_name}"
+    short_module_path = module_path[module_path.find("custom_tool."):]
+    return f"{short_module_path}"
   
   @classmethod
   def description(cls) -> str:

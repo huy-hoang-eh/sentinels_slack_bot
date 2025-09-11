@@ -18,7 +18,7 @@ class OmitIssueDataForSummary(Base):
                     "description": "The Jira issue data to process for summary"
                 },
             },
-            "required": ["issue_data"]
+            "required": ["issues"]
         }
     
     @classmethod

@@ -68,6 +68,10 @@ class Gemini(Base):
           )
         ]
       del gemini_config["use_tools"]
+      
+    if "custom_tools" in gemini_config:
+      del gemini_config["custom_tools"]
+
     return types.GenerateContentConfig(**gemini_config)
   
   async def send_message(self, prompt: str, config: dict | None = None) -> types.GenerateContentResponse:

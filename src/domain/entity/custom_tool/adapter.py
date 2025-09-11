@@ -7,8 +7,8 @@ class Adapter:
   @classmethod
   def _get_custom_tool(cls, name: str) -> Base:
     try:
-      module_name = name.split("-")[0]
-      class_name = name.split("-")[1]
+      module_name = "src.domain.entity." + name
+      class_name = "".join(map(lambda x: x.capitalize(), name.split(".")[-1].split("_")))
       module = importlib.import_module(module_name)
       cls = getattr(module, class_name)
       return cls
